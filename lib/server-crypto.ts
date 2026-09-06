@@ -1,6 +1,6 @@
 // lib/server-crypto.ts
 // Constitutional Guard N03: Private by Default
-// Server-side Application-Level Encryption for Bilik Doa
+// Server-side Application-Layer Encryption for Bilik Doa
 // Runs exclusively in Next.js Server Actions (Node.js runtime). Never exposes keys to client.
 
 import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from 'crypto';

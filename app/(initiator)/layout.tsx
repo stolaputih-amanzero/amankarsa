@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
+import { isFeatureEnabled } from '@/lib/feature-flags';
 
 export default async function InitiatorLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient();
@@ -22,9 +23,11 @@ export default async function InitiatorLayout({ children }: { children: React.Re
             <Link href="/setup" className="hover:text-[color:var(--color-depth)] transition-colors">
               Buat Perjalanan
             </Link>
-            <Link href="/impact" className="hover:text-[color:var(--color-depth)] transition-colors">
-              Buah Kasih
-            </Link>
+            {isFeatureEnabled('enableInitiatorImpact') && (
+              <Link href="/impact" className="hover:text-[color:var(--color-depth)] transition-colors">
+                Buah Kasih
+              </Link>
+            )}
           </div>
         </nav>
       </header>

@@ -1,0 +1,51 @@
+name: Constitutional Guard & CI
+
+on:
+  pull_request:
+    branches: [main, staging]
+  push:
+    branches: [main]
+
+jobs:
+  constitutional-audit:
+    name: 🛡️ Constitutional Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Audit Forbidden Patterns (Guilt & Metrics)
+        run: |
+          echo "🔍 Scanning for anti-entities and guilt mechanics..."
+          if grep -RiE "(streak|score|leaderboard|level|gagal|wajib|harus|terlambat|inactive_users|conversion|faith_level)" ./app ./lib ./actions ./components ./types; then
+            echo "❌ CONSTITUTIONAL VIOLATION DETECTED: Forbidden patterns found in codebase."
+            echo "Please review 01_AMANKARSA_CONSTITUTION.md (N01 & N02)."
+            exit 1
+          fi
+          echo "✅ Constitutional Audit Passed: No guilt mechanics or faith scores detected."
+
+      - name: Audit Hardcoded Hex Colors (Design Token Violation)
+        run: |
+          echo "🎨 Scanning for hardcoded hex colors..."
+          if grep -RiE "#[0-9a-fA-F]{3,6}" ./app ./components --include=\*.tsx; then
+            echo "❌ DESIGN TOKEN VIOLATION: Hardcoded hex colors found. Use app/globals.css tokens."
+            exit 1
+          fi
+          echo "✅ Design Token Audit Passed."
+
+  typecheck-and-build:
+    name: ⚙️ Typecheck & Build
+    runs-on: ubuntu-latest
+    needs: constitutional-audit
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm tsc --noEmit
+      - run: pnpm run build

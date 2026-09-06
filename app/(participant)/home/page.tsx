@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/auth-provider';
 import { supabase } from '@/lib/supabase/client';
 import { respondToPulse } from '@/actions/participant';
+import { isFeatureEnabled } from '@/lib/feature-flags';
 
 const TandaRasaPrompt = () => {
   const [submitted, setSubmitted] = useState(false);
@@ -108,22 +109,24 @@ export default function HomePage() {
                  <Sprout size={18} />
                  Rawat sekarang
               </button>
-              <div className="flex gap-3">
-                 <button 
-                   onClick={() => handlePulseAction('pocketed')}
-                   className="flex-1 py-3 px-4 bg-transparent border border-[color:var(--color-border)] text-[color:var(--color-text-secondary)] rounded-xl font-medium transition-colors hover:bg-[color:var(--color-surface-raised)] flex items-center justify-center gap-2"
-                 >
-                   <Leaf size={18} />
-                   Simpan di Saku
-                 </button>
-                 <button 
-                   onClick={() => handlePulseAction('rested')}
-                   className="flex-1 py-3 px-4 bg-transparent border border-[color:var(--color-border)] text-[color:var(--color-rest)] rounded-xl font-medium transition-colors hover:bg-[color:var(--color-surface-raised)] flex items-center justify-center gap-2"
-                 >
-                   Relakan
-                 </button>
-              </div>
-           </div>
+               <div className="flex gap-3">
+                  {isFeatureEnabled('enableSaku') && (
+                    <button 
+                      onClick={() => handlePulseAction('pocketed')}
+                      className="flex-1 py-3 px-4 bg-transparent border border-[color:var(--color-border)] text-[color:var(--color-text-secondary)] rounded-xl font-medium transition-colors hover:bg-[color:var(--color-surface-raised)] flex items-center justify-center gap-2"
+                    >
+                      <Leaf size={18} />
+                      Simpan di Saku
+                    </button>
+                  )}
+                  <button 
+                    onClick={() => handlePulseAction('rested')}
+                    className={`py-3 px-4 bg-transparent border border-[color:var(--color-border)] text-[color:var(--color-rest)] rounded-xl font-medium transition-colors hover:bg-[color:var(--color-surface-raised)] flex items-center justify-center gap-2 ${isFeatureEnabled('enableSaku') ? 'flex-1' : 'w-full'}`}
+                  >
+                    Relakan
+                  </button>
+               </div>
+            </div>
         </section>
       ) : (
         <section className="bg-[color:var(--color-surface-raised)] rounded-2xl p-6 border border-[color:var(--color-border-soft)] text-center animate-in fade-in duration-slow">
@@ -142,37 +145,43 @@ export default function HomePage() {
 
       <TandaRasaPrompt />
 
-      <section className="bg-[color:var(--color-surface)] rounded-2xl p-6 shadow-sm border border-[color:var(--color-border)] flex flex-col items-center text-center space-y-4" data-space="sacred">
-         <BookOpen className="text-[color:var(--color-sacred)] mb-2" size={32} strokeWidth={1.5} />
-         <h3 className="text-xl font-serif text-[color:var(--color-sacred)]">
-            Bilik Doa
-         </h3>
-         <p className="text-[color:var(--color-text-secondary)] leading-relaxed text-sm">
-            Ruang hening pribadimu. Hanya untukmu dan Tuhan.
-         </p>
-         <button 
-           onClick={() => router.push('/bilik-doa')}
-           className="w-full mt-2 py-3 px-4 bg-[color:var(--color-sacred)] text-[color:var(--color-base)] rounded-xl font-medium transition-opacity hover:opacity-90"
-         >
-            Masuk ke Bilik Doa
-         </button>
-      </section>
+      {isFeatureEnabled('enableBilikDoa') && (
+        <section className="bg-[color:var(--color-surface)] rounded-2xl p-6 shadow-sm border border-[color:var(--color-border)] flex flex-col items-center text-center space-y-4" data-space="sacred">
+           <BookOpen className="text-[color:var(--color-sacred)] mb-2" size={32} strokeWidth={1.5} />
+           <h3 className="text-xl font-serif text-[color:var(--color-sacred)]">
+              Bilik Doa
+           </h3>
+           <p className="text-[color:var(--color-text-secondary)] leading-relaxed text-sm">
+              Ruang hening pribadimu. Hanya untukmu dan Tuhan.
+           </p>
+           <button 
+             onClick={() => router.push('/bilik-doa')}
+             className="w-full mt-2 py-3 px-4 bg-[color:var(--color-sacred)] text-[color:var(--color-base)] rounded-xl font-medium transition-opacity hover:opacity-90"
+           >
+              Masuk ke Bilik Doa
+           </button>
+        </section>
+      )}
 
       <div className="flex justify-center mt-4 gap-6">
-         <Link 
-           href="/pohon"
-           className="flex items-center gap-2 text-[color:var(--color-text-secondary)] hover:text-[color:var(--color-text-primary)] transition-colors px-4 py-2"
-         >
-           <Sprout size={18} />
-           <span>Pohon Karsa</span>
-         </Link>
-         <Link 
-           href="/saku"
-           className="flex items-center gap-2 text-[color:var(--color-text-secondary)] hover:text-[color:var(--color-text-primary)] transition-colors px-4 py-2"
-         >
-           <Leaf size={18} />
-           <span>Lihat Saku</span>
-         </Link>
+         {isFeatureEnabled('enablePohonKarsa') && (
+           <Link 
+             href="/pohon"
+             className="flex items-center gap-2 text-[color:var(--color-text-secondary)] hover:text-[color:var(--color-text-primary)] transition-colors px-4 py-2"
+           >
+             <Sprout size={18} />
+             <span>Pohon Karsa</span>
+           </Link>
+         )}
+         {isFeatureEnabled('enableSaku') && (
+           <Link 
+             href="/saku"
+             className="flex items-center gap-2 text-[color:var(--color-text-secondary)] hover:text-[color:var(--color-text-primary)] transition-colors px-4 py-2"
+           >
+             <Leaf size={18} />
+             <span>Lihat Saku</span>
+           </Link>
+         )}
       </div>
     </div>
   );
