@@ -1,7 +1,15 @@
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { revalidatePath } from 'next/cache';
+
+async function getInitiatorSupabase() {
+  const admin = createAdminClient();
+  if (admin) return admin;
+  return await createClient();
+}
+
 
 export async function getEthicalPulseSignals(journeyId: string) {
   const supabase = await createClient();
@@ -76,7 +84,7 @@ export async function getInitiatorJourneys() {
 
 export async function createJourney(formData: FormData) {
   try {
-    const supabase = await createClient();
+    const supabase = await getInitiatorSupabase();
     const { data: { user } } = await supabase.auth.getUser();
     const initiatorId = user?.id || null;
 
@@ -94,6 +102,10 @@ export async function createJourney(formData: FormData) {
       .select()
       .single();
 
+    if (error) {
+      console.error('createJourney Supabase insert error:', error.message, error.details);
+    }
+
     let created = newJourney;
     if (error || !created) {
       // Fallback object for dev mode if RLS restricts unauthenticated insert
@@ -106,6 +118,7 @@ export async function createJourney(formData: FormData) {
         created_at: new Date().toISOString()
       };
     }
+
 
     // Seed default gentle pulses for the journey
     const defaultPulses: Array<{
@@ -157,9 +170,10 @@ export async function createJourney(formData: FormData) {
 
 export async function seedAnchorJourney() {
   try {
-    const supabase = await createClient();
+    const supabase = await getInitiatorSupabase();
     const { data: { user } } = await supabase.auth.getUser();
     const initiatorId = user?.id || null;
+
 
     // Cek apakah perjalanan Sahabat Kaum Papa sudah ada untuk inisiator ini
     if (initiatorId) {
@@ -276,7 +290,7 @@ export async function logImpactRecord(
   storyDescription?: string
 ) {
   try {
-    const supabase = await createClient();
+    const supabase = await getInitiatorSupabase();
 
     let actName = '';
     let mType: 'volunteer_hours' | 'meals_distributed' | 'visits_made' | 'packages_distributed' | 'families_served' | 'environmental_actions' | 'other_service_actions' = 'meals_distributed';
@@ -298,7 +312,7 @@ export async function logImpactRecord(
       story = storyDescription || null;
     }
 
-    await supabase.from('impact_record').insert({
+    const { error } = await supabase.from('impact_record').insert({
       journey_id: journeyId,
       service_activity_name: actName,
       metric_type: mType,
@@ -308,6 +322,10 @@ export async function logImpactRecord(
       source: 'initiator_reported'
     });
 
+    if (error) {
+      console.error('logImpactRecord DB error:', error.message, error.details);
+    }
+
     revalidatePath('/impact');
   } catch (err) {
     console.error('logImpactRecord error:', err);
@@ -316,7 +334,7 @@ export async function logImpactRecord(
 
 export async function getImpactRecords(journeyId: string) {
   try {
-    const supabase = await createClient();
+    const supabase = await getInitiatorSupabase();
     const { data } = await supabase
       .from('impact_record')
       .select('*, beneficiary_group(label, category)')
@@ -329,4 +347,5 @@ export async function getImpactRecords(journeyId: string) {
     return [];
   }
 }
+
 
