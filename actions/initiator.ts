@@ -105,6 +105,96 @@ export async function createJourney(formData: FormData) {
   return newJourney;
 }
 
+export async function seedAnchorJourney() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  const initiatorId = user?.id || null;
+
+  // Cek apakah perjalanan Sahabat Kaum Papa sudah ada untuk inisiator ini
+  if (initiatorId) {
+    const { data: existing } = await supabase
+      .from('journey')
+      .select('*')
+      .eq('initiator_id', initiatorId)
+      .eq('theme', 'Sahabat Kaum Papa')
+      .maybeSingle();
+
+    if (existing) {
+      return existing;
+    }
+  }
+
+  // 1. Buat Journey Anchor: Sahabat Kaum Papa (15 Hari)
+  const { data: newJourney, error } = await supabase
+    .from('journey')
+    .insert({
+      initiator_id: initiatorId,
+      theme: 'Sahabat Kaum Papa',
+      duration_days: 15,
+      status: 'active'
+    })
+    .select()
+    .single();
+
+  if (error || !newJourney) throw new Error('Belum dapat menyemaikan perjalanan saat ini.');
+
+  // 2. Buat Kelompok Penerima Manfaat
+  await supabase.from('beneficiary_group').insert([
+    {
+      journey_id: newJourney.id,
+      label: 'Lansia & Keluarga Pra-Sejahtera Sekitar',
+      category: 'lansia',
+      estimated_count: 50,
+      unit: 'keluarga',
+      privacy_level: 'aggregate_only'
+    },
+    {
+      journey_id: newJourney.id,
+      label: 'Anak Jalanan & Pekerja Rentan',
+      category: 'pekerja_rentan',
+      estimated_count: 100,
+      unit: 'orang',
+      privacy_level: 'aggregate_only'
+    }
+  ]);
+
+  // 3. Semaikan 15 Pulsa Kasih (Hari 0 - 14)
+  const anchorPulses: Array<{
+    day_index: number;
+    prompt_text: string;
+    action_type: 'contemplation' | 'practical_action' | 'reflection';
+  }> = [
+    { day_index: 0, prompt_text: 'Apa satu hal kecil yang membuatmu bersyukur hari ini?', action_type: 'reflection' },
+    { day_index: 1, prompt_text: 'Luangkan 3 menit hening. Bayangkan wajah seseorang yang mungkin merasa tak terlihat hari ini.', action_type: 'contemplation' },
+    { day_index: 2, prompt_text: 'Jika ada kesempatan, sapa atau bantu seseorang di sekitarmu dengan senyuman ramah. Tidak perlu besar, cukup hadir.', action_type: 'practical_action' },
+    { day_index: 3, prompt_text: 'Tarik napas perlahan. Sadari bahwa setiap orang yang berpapasan denganmu memiliki pergumulan yang tak terucapkan.', action_type: 'contemplation' },
+    { day_index: 4, prompt_text: 'Sisihkan sedikit rezeki atau belikan sebungkus makanan hangat bagi mereka yang sedang berjuang di jalanan.', action_type: 'practical_action' },
+    { day_index: 5, prompt_text: 'Beri ruang bagi dirimu untuk beristirahat tanpa beban. Kasih karunia tidak menuntut kesempurnaan; hari ini cukup.', action_type: 'reflection' },
+    { day_index: 6, prompt_text: 'Dengarkan keluh kesah seorang sahabat atau keluarga tanpa terburu-buru memberi nasihat. Cukup dengarkan dengan tulus.', action_type: 'practical_action' },
+    { day_index: 7, prompt_text: 'Bawalah nama-nama mereka yang terlupakan ke dalam Bilik Doa. Serahkan segala kelemahanmu kepada Tuhan dalam damai.', action_type: 'reflection' },
+    { day_index: 8, prompt_text: 'Kumpulkan pakaian layak pakai atau barang kebutuhan pokok yang bisa disalurkan bagi saudara-saudara kita yang membutuhkan.', action_type: 'practical_action' },
+    { day_index: 9, prompt_text: 'Ketika melihat seseorang yang tersisih hari ini, pandanglah dia bukan dengan rasa kasihan, melainkan sebagai saudara terkasih.', action_type: 'contemplation' },
+    { day_index: 10, prompt_text: 'Ucapkan terima kasih dan doakan petugas kebersihan, satpam, atau kurir yang melayani harimu dengan setia.', action_type: 'practical_action' },
+    { day_index: 11, prompt_text: 'Biarkan hatimu dipulihkan dalam keteduhan. Menjadi sahabat bagi kaum papa bermula dari jiwa yang telah merasakan damai.', action_type: 'reflection' },
+    { day_index: 12, prompt_text: 'Kirimkan pesan penguatan atau doa hening bagi rekan yang sedang lelah memikul tanggung jawab hidup.', action_type: 'practical_action' },
+    { day_index: 13, prompt_text: 'Jika memungkinkan, luangkan waktu sejenak untuk mengunjungi atau menyapa seorang lansia yang hidup sendirian.', action_type: 'practical_action' },
+    { day_index: 14, prompt_text: 'Perjalanan 15 hari ini tiba di penghujung musim. Apa satu benih kebaikan yang tumbuh di hatimu dan ingin kamu bawa terus?', action_type: 'reflection' }
+  ];
+
+  await supabase.from('the_pulse').insert(
+    anchorPulses.map(p => ({
+      journey_id: newJourney.id,
+      day_index: p.day_index,
+      prompt_text: p.prompt_text,
+      action_type: p.action_type
+    }))
+  );
+
+  revalidatePath('/dashboard');
+  revalidatePath('/setup');
+  return newJourney;
+}
+
 export async function logImpactRecord(
   journeyId: string, 
   formDataOrActivity: FormData | string, 

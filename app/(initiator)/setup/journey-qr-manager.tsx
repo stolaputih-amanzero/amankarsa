@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { Copy, Check, Printer, Maximize2, X, Plus, QrCode } from 'lucide-react';
-import { createJourney } from '@/actions/initiator';
+import { Copy, Check, Printer, Maximize2, X, Plus, QrCode, Sparkles } from 'lucide-react';
+import { createJourney, seedAnchorJourney } from '@/actions/initiator';
 import type { Database } from '@/types/database';
 
 type Journey = Database['public']['Tables']['journey']['Row'];
@@ -61,8 +61,56 @@ export default function JourneyQRManager({ initialJourneys }: JourneyQRManagerPr
     }
   };
 
+  const [isSeeding, setIsSeeding] = useState(false);
+
+  const handleUseAnchorTemplate = async () => {
+    setIsSeeding(true);
+    try {
+      const anchorJourney = await seedAnchorJourney();
+      if (anchorJourney) {
+        const exists = journeys.some((j) => j.id === anchorJourney.id);
+        if (!exists) {
+          setJourneys([anchorJourney, ...journeys]);
+        }
+        setSelectedJourneyId(anchorJourney.id);
+        setIsCreating(false);
+      }
+    } catch {
+      // Graceful fallback
+    } finally {
+      setIsSeeding(false);
+    }
+  };
+
+  const hasAnchorJourney = journeys.some((j) => j.theme === 'Sahabat Kaum Papa');
+
   return (
     <div className="space-y-8">
+      {/* Anchor Journey Pilot Template Banner */}
+      {!hasAnchorJourney && (
+        <div className="p-5 rounded-2xl bg-[color:var(--color-surface-raised)] border border-[color:var(--color-border-soft)] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-in fade-in duration-normal">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <Sparkles size={16} className="text-[color:var(--color-growth)]" />
+              <span className="font-serif font-medium text-[color:var(--color-depth)]">
+                Template Pilot: Sahabat Kaum Papa (15 Hari)
+              </span>
+            </div>
+            <p className="text-xs text-[color:var(--color-text-secondary)] leading-relaxed max-w-md">
+              Dilengkapi 15 pulsa kasih harian terstruktur dan kelompok penerima manfaat lansia & pekerja rentan. Siap cetak & digunakan.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={handleUseAnchorTemplate}
+            disabled={isSeeding}
+            className="px-4 py-2.5 rounded-xl bg-[color:var(--color-growth)] text-[color:var(--color-text-inverse)] text-xs font-medium hover:opacity-90 transition-opacity whitespace-nowrap"
+          >
+            {isSeeding ? 'Menyiapkan...' : 'Aktifkan Template Pilot'}
+          </button>
+        </div>
+      )}
+
       {/* Action Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-[color:var(--color-border)] pb-6">
         <div>
