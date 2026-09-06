@@ -1,13 +1,14 @@
 'use client';
 
-import { BookOpen, KeyRound, Leaf, Sprout } from 'lucide-react';
-import { useState } from 'react';
+import { BookOpen, KeyRound, Leaf, Sprout, RotateCcw } from 'lucide-react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/auth-provider';
 import { supabase } from '@/lib/supabase/client';
-import { respondToPulse, titipKunci } from '@/actions/participant';
+import { respondToPulse, titipKunci, getParticipantActiveJourney } from '@/actions/participant';
 import { isFeatureEnabled } from '@/lib/feature-flags';
+
 
 const TandaRasaPrompt = () => {
   const [submitted, setSubmitted] = useState(false);
@@ -145,12 +146,50 @@ const TitipKunciCard = () => {
 export default function HomePage() {
   const router = useRouter();
   const [pulseState, setPulseState] = useState<'pending' | 'acted' | 'pocketed' | 'rested'>('pending');
+  const [journeyData, setJourneyData] = useState<{
+    theme: string;
+    dayIndex: number;
+    pulsePrompt: string;
+    pulseId: string;
+  } | null>(null);
+
+  useEffect(() => {
+    const loadJourney = async () => {
+      try {
+        const res = await getParticipantActiveJourney();
+        if (res && res.journey) {
+          const currentPulse = res.pulses[res.currentDayIndex] || res.pulses[0];
+          setJourneyData({
+            theme: res.journey.theme,
+            dayIndex: currentPulse ? currentPulse.day_index : 0,
+            pulsePrompt: currentPulse ? currentPulse.prompt_text : 'Sebelum kita melangkah menjadi sahabat bagi mereka yang tersisih, heningkan hatimu sejenak. Sadarilah bahwa kita pun sesungguhnya kaum papa yang membutuhkan kasih karunia.',
+            pulseId: currentPulse ? currentPulse.id : 'pulse-step-1',
+          });
+        } else {
+          setJourneyData({
+            theme: 'Sahabat Kaum Papa',
+            dayIndex: 0,
+            pulsePrompt: 'Sebelum kita melangkah menjadi sahabat bagi mereka yang tersisih, heningkan hatimu sejenak. Sadarilah bahwa kita pun sesungguhnya kaum papa yang membutuhkan kasih karunia.',
+            pulseId: 'pulse-step-1',
+          });
+        }
+      } catch {
+        setJourneyData({
+          theme: 'Sahabat Kaum Papa',
+          dayIndex: 0,
+          pulsePrompt: 'Sebelum kita melangkah menjadi sahabat bagi mereka yang tersisih, heningkan hatimu sejenak. Sadarilah bahwa kita pun sesungguhnya kaum papa yang membutuhkan kasih karunia.',
+          pulseId: 'pulse-step-1',
+        });
+      }
+    };
+    loadJourney();
+  }, []);
 
   const handlePulseAction = async (action: 'acted' | 'pocketed' | 'rested') => {
     setPulseState(action);
     const dbState = action === 'pocketed' ? 'paused' : action;
     try {
-      await respondToPulse('pulse-step-1', dbState);
+      await respondToPulse(journeyData?.pulseId || 'pulse-step-1', dbState);
     } catch {
       // Graceful fallback preserves peaceful flow
     }
@@ -159,11 +198,16 @@ export default function HomePage() {
   return (
     <div className="flex flex-col space-y-8 w-full max-w-md mx-auto relative min-h-[400px] animate-in fade-in duration-normal pb-12">
       <header className="flex flex-col space-y-2">
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-mono tracking-widest text-[color:var(--color-growth)] uppercase bg-[color:var(--color-growth-soft)] px-3 py-1 rounded-full">
+            {journeyData?.theme || 'Sahabat Kaum Papa'}
+          </span>
+        </div>
         <h2 className="text-2xl font-serif text-[color:var(--color-depth)] tracking-tight">
-           Ruang Hari Ini
+           Selamat datang di {journeyData?.theme || 'Sahabat Kaum Papa'}
         </h2>
         <p className="text-[color:var(--color-text-secondary)] leading-relaxed">
-           Selamat datang kembali. Ruang teduh ini selalu terbuka menunggumu.
+           Ruang teduh ini selalu terbuka menunggumu. Melangkah hening hari demi hari.
         </p>
       </header>
       
@@ -171,14 +215,17 @@ export default function HomePage() {
         <section className="bg-[color:var(--color-surface)] rounded-2xl p-6 shadow-sm border border-[color:var(--color-border)] flex flex-col space-y-6">
            <div className="flex justify-between items-start">
               <h3 className="text-xl font-serif text-[color:var(--color-depth)]">
-                 Satu langkah kecil
+                 Satu denyut kasih
               </h3>
-              <span className="bg-[color:var(--color-surface-raised)] text-[color:var(--color-text-muted)] text-sm px-3 py-1 rounded-full">Hari 1</span>
+              <span className="bg-[color:var(--color-surface-raised)] text-[color:var(--color-text-muted)] text-sm px-3 py-1 rounded-full">
+                Hari {journeyData?.dayIndex ?? 0}
+              </span>
            </div>
            
            <p className="text-[color:var(--color-text-primary)] text-lg leading-relaxed">
-              Kirimkan satu pesan penguatan bagi rekan kerja atau saudara yang mungkin sedang bergumul hari ini.
+              {journeyData?.pulsePrompt || 'Sebelum kita melangkah menjadi sahabat bagi mereka yang tersisih, heningkan hatimu sejenak. Sadarilah bahwa kita pun sesungguhnya kaum papa yang membutuhkan kasih karunia.'}
            </p>
+
            
            <div className="flex flex-col gap-3 pt-2">
               <button 
@@ -264,6 +311,22 @@ export default function HomePage() {
            </Link>
          )}
       </div>
+
+      <div className="text-center pt-6 pb-2">
+        <button
+          onClick={() => {
+            if (typeof window !== 'undefined') {
+              localStorage.removeItem('amankarsa_onboarding_completed');
+            }
+            router.push('/');
+          }}
+          className="text-xs text-[color:var(--color-text-muted)] hover:text-[color:var(--color-text-secondary)] transition-colors inline-flex items-center gap-1.5"
+        >
+          <RotateCcw size={12} />
+          <span>Ulangi Alur Masuk Awal</span>
+        </button>
+      </div>
     </div>
   );
 }
+

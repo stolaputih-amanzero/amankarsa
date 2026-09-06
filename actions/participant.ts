@@ -162,6 +162,91 @@ export async function titipKunci(authChannel: 'email' | 'whatsapp' | 'copy') {
 // ==========================================
 // 5. JOURNEY MEMBERSHIP (PINTU MASUK)
 // ==========================================
+export async function getJourneyDetails(journeyId: string) {
+  try {
+    const supabase = await createClient();
+    const { data } = await supabase
+      .from('journey')
+      .select('id, theme, duration_days, status')
+      .eq('id', journeyId)
+      .maybeSingle();
+
+    return data || null;
+  } catch (err) {
+    console.error('getJourneyDetails error:', err);
+    return null;
+  }
+}
+
+export async function getParticipantActiveJourney() {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    // 1. Cek perjalanan aktif milik peserta terdaftar
+    if (user) {
+      const { data: userJourneyState } = await supabase
+        .from('participant_journey_state')
+        .select(`
+          id,
+          journey_id,
+          state,
+          updated_at,
+          journey:journey_id (id, theme, duration_days, status)
+        `)
+        .eq('participant_id', user.id)
+        .eq('state', 'active')
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (userJourneyState && userJourneyState.journey) {
+        const j = Array.isArray(userJourneyState.journey) ? userJourneyState.journey[0] : userJourneyState.journey;
+        // Ambil pulse untuk journey ini
+        const { data: pulses } = await supabase
+          .from('the_pulse')
+          .select('id, day_index, prompt_text, action_type')
+          .eq('journey_id', j.id)
+          .order('day_index', { ascending: true });
+
+        return {
+          journey: j,
+          pulses: pulses || [],
+          currentDayIndex: 0
+        };
+      }
+    }
+
+    // 2. Fallback jika belum terikat spesifik: ambil anchor journey aktif terbaru (misal: Sahabat Kaum Papa)
+    const { data: latestActive } = await supabase
+      .from('journey')
+      .select('id, theme, duration_days, status')
+      .eq('status', 'active')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (latestActive) {
+      const { data: pulses } = await supabase
+        .from('the_pulse')
+        .select('id, day_index, prompt_text, action_type')
+        .eq('journey_id', latestActive.id)
+        .order('day_index', { ascending: true });
+
+      return {
+        journey: latestActive,
+        pulses: pulses || [],
+        currentDayIndex: 0
+      };
+    }
+
+    return null;
+  } catch (err) {
+    console.error('getParticipantActiveJourney error:', err);
+    return null;
+  }
+}
+
 export async function joinJourney(journeyId: string) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -186,3 +271,4 @@ export async function joinJourney(journeyId: string) {
   revalidatePath('/home');
   return { success: true };
 }
+

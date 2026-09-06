@@ -1,22 +1,39 @@
 'use client';
 
-import { Suspense, useEffect } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/components/auth-provider';
 import OnboardingFlow from '@/components/onboarding/OnboardingFlow';
-import { joinJourney } from '@/actions/participant';
+import { joinJourney, getJourneyDetails, getParticipantActiveJourney } from '@/actions/participant';
 
 function LandingContent() {
   const { user, loading } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const joinJourneyId = searchParams.get('join');
+  const [journeyTheme, setJourneyTheme] = useState<string | null>(null);
 
   useEffect(() => {
-    if (joinJourneyId && typeof window !== 'undefined') {
-      sessionStorage.setItem('pending_join_journey', joinJourneyId);
-    }
+    const resolveTheme = async () => {
+      if (joinJourneyId) {
+        if (typeof window !== 'undefined') {
+          sessionStorage.setItem('pending_join_journey', joinJourneyId);
+        }
+        const j = await getJourneyDetails(joinJourneyId);
+        if (j?.theme) {
+          setJourneyTheme(j.theme);
+          return;
+        }
+      }
+      // Check if there is an active journey (e.g. Sahabat Kaum Papa)
+      const active = await getParticipantActiveJourney();
+      if (active?.journey?.theme) {
+        setJourneyTheme(active.journey.theme);
+      }
+    };
+    resolveTheme();
   }, [joinJourneyId]);
+
 
   useEffect(() => {
     if (!loading && user) {
@@ -65,10 +82,11 @@ function LandingContent() {
 
   return (
     <main className="min-h-screen flex flex-col justify-center px-4 sm:px-6 max-w-md mx-auto relative">
-      <OnboardingFlow onComplete={handleOnboardingComplete} />
+      <OnboardingFlow onComplete={handleOnboardingComplete} journeyTheme={journeyTheme} />
     </main>
   );
 }
+
 
 export default function LandingPage() {
   return (

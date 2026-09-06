@@ -8,11 +8,17 @@ import { supabase } from '@/lib/supabase/client';
 
 type Step = 'landing' | 'name' | 'context' | 'first_pulse' | 'titip_kunci' | 'seed';
 
-export default function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
+interface OnboardingFlowProps {
+  onComplete: () => void;
+  journeyTheme?: string | null;
+}
+
+export default function OnboardingFlow({ onComplete, journeyTheme }: OnboardingFlowProps) {
   const { user, signInAnonymously } = useAuth();
   const [step, setStep] = useState<Step>('landing');
   const [name, setName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
 
   const nextStep = (next: Step) => setStep(next);
 
@@ -119,11 +125,21 @@ export default function OnboardingFlow({ onComplete }: { onComplete: () => void 
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.8, ease: [0.25, 0.1, 0.25, 1] }}
-            className="flex flex-col items-center text-center space-y-8"
+            className="flex flex-col items-center text-center space-y-6"
           >
+            {journeyTheme && (
+              <span className="text-xs font-mono tracking-widest text-[color:var(--color-growth)] uppercase bg-[color:var(--color-growth-soft)] px-3 py-1 rounded-full">
+                Perjalanan Kasih
+              </span>
+            )}
             <h1 className="text-3xl font-serif text-[color:var(--color-depth)] tracking-tight">
-              Selamat datang di ruang teduh.
+              {journeyTheme ? `Selamat datang di ${journeyTheme}` : 'Selamat datang di ruang teduh.'}
             </h1>
+            <p className="text-sm text-[color:var(--color-text-secondary)] max-w-xs leading-relaxed">
+              {journeyTheme 
+                ? 'Sebuah ruang pembentukan iman yang hening, tanpa tuntutan, dan penuh penerimaan.'
+                : 'Pintu selalu terbuka untuk jiwamu yang ingin beristirahat.'}
+            </p>
             <button
               onClick={handleStart}
               disabled={isSubmitting}
@@ -132,6 +148,7 @@ export default function OnboardingFlow({ onComplete }: { onComplete: () => void 
               Mulai melangkah
             </button>
           </motion.div>
+
         )}
 
         {step === 'name' && (
