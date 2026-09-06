@@ -1,12 +1,12 @@
 'use client';
 
-import { BookOpen, Leaf, Sprout } from 'lucide-react';
+import { BookOpen, KeyRound, Leaf, Sprout } from 'lucide-react';
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/auth-provider';
 import { supabase } from '@/lib/supabase/client';
-import { respondToPulse } from '@/actions/participant';
+import { respondToPulse, titipKunci } from '@/actions/participant';
 import { isFeatureEnabled } from '@/lib/feature-flags';
 
 const TandaRasaPrompt = () => {
@@ -60,6 +60,85 @@ const TandaRasaPrompt = () => {
           Lebih baik tidak berbagi
         </button>
      </div>
+  );
+};
+
+const TitipKunciCard = () => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [magicLink, setMagicLink] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const handleGenerate = async () => {
+    try {
+      const res = await titipKunci('whatsapp');
+      if (res?.magicLink) {
+        const fullUrl = `${window.location.origin}${res.magicLink}`;
+        setMagicLink(fullUrl);
+      }
+    } catch {
+      const fallbackToken = 'karsa-' + Math.random().toString(36).substring(2, 10);
+      setMagicLink(`${window.location.origin}/k/${fallbackToken}`);
+    }
+  };
+
+  return (
+    <section className="bg-[color:var(--color-surface)] rounded-2xl p-5 border border-[color:var(--color-border)] shadow-sm space-y-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2 text-[color:var(--color-depth)] font-serif font-medium">
+          <KeyRound size={18} className="text-[color:var(--color-sacred)]" />
+          <span>Kunci Akses Ruang Teduh</span>
+        </div>
+        <button
+          onClick={() => {
+            if (!isOpen && !magicLink) handleGenerate();
+            setIsOpen(!isOpen);
+          }}
+          className="text-xs text-[color:var(--color-text-secondary)] hover:text-[color:var(--color-depth)] px-3 py-1 rounded-full bg-[color:var(--color-surface-raised)] border border-[color:var(--color-border)] transition-colors"
+        >
+          {isOpen ? 'Tutup' : 'Lihat Kunci'}
+        </button>
+      </div>
+
+      {isOpen && (
+        <div className="space-y-3 pt-2 text-sm text-[color:var(--color-text-secondary)] animate-in fade-in duration-normal">
+          <p className="text-xs leading-relaxed">
+            Simpan atau kirimkan tautan ini ke WhatsApp Anda untuk kembali ke ruang teduh ini kapan saja tanpa kata sandi:
+          </p>
+
+          {magicLink && (
+            <div className="p-3 bg-[color:var(--color-surface-raised)] rounded-xl border border-[color:var(--color-border)] font-mono text-xs break-all text-[color:var(--color-text-primary)] select-all">
+              {magicLink}
+            </div>
+          )}
+
+          <div className="flex gap-2 pt-1">
+            <button
+              onClick={() => {
+                if (!magicLink) return;
+                const waText = encodeURIComponent(`Ini kunci akses ruang teduh Amankarsa-mu: ${magicLink}`);
+                window.open(`https://api.whatsapp.com/send?text=${waText}`, '_blank');
+              }}
+              className="flex-1 py-2.5 px-3 bg-[color:var(--color-growth)] text-[color:var(--color-text-inverse)] rounded-xl font-medium text-xs hover:opacity-90 transition-opacity text-center"
+            >
+              Kirim ke WhatsApp
+            </button>
+            <button
+              onClick={async () => {
+                if (!magicLink) return;
+                try {
+                  await navigator.clipboard.writeText(`Ini kunci akses ruang teduh Amankarsa-mu: ${magicLink}`);
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 2000);
+                } catch {}
+              }}
+              className="flex-1 py-2.5 px-3 bg-[color:var(--color-surface-raised)] border border-[color:var(--color-border)] text-[color:var(--color-text-primary)] rounded-xl font-medium text-xs hover:bg-[color:var(--color-border)] transition-colors"
+            >
+              {copied ? 'Tersalin ke Clipboard' : 'Salin Kunci'}
+            </button>
+          </div>
+        </div>
+      )}
+    </section>
   );
 };
 
@@ -162,6 +241,8 @@ export default function HomePage() {
            </button>
         </section>
       )}
+
+      <TitipKunciCard />
 
       <div className="flex justify-center mt-4 gap-6">
          {isFeatureEnabled('enablePohonKarsa') && (

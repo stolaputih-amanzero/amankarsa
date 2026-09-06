@@ -47,6 +47,9 @@ export default function OnboardingFlow({ onComplete }: { onComplete: () => void 
     }
   };
 
+  const [generatedLink, setGeneratedLink] = useState<string | null>(null);
+  const [linkCopied, setLinkCopied] = useState(false);
+
   const handlePulseResponse = async () => {
     nextStep('titip_kunci');
   };
@@ -55,40 +58,55 @@ export default function OnboardingFlow({ onComplete }: { onComplete: () => void 
     setIsSubmitting(true);
     try {
       if (method === 'email' && inputValue && user) {
-        // Link identity via Magic Link - retains the same auth.users.id
         await supabase.auth.updateUser({ email: inputValue });
-      } else if (method === 'whatsapp' && user) {
-        // Generate a recovery token for WhatsApp/Copy
+        nextStep('seed');
+        setTimeout(() => {
+          onComplete();
+        }, 2000);
+      } else if (method === 'whatsapp') {
         const token = generateSecureToken();
         const hashed = await hashToken(token);
         
         const expiresAt = new Date();
         expiresAt.setDate(expiresAt.getDate() + 45); // Expires in 45 days
         
-        await supabase.from('recovery_key').insert({
-          participant_id: user.id,
-          token_hash: hashed,
-          channel: 'whatsapp',
-          expires_at: expiresAt.toISOString(),
-        });
+        if (user) {
+          await supabase.from('recovery_key').insert({
+            participant_id: user.id,
+            token_hash: hashed,
+            channel: 'whatsapp',
+            expires_at: expiresAt.toISOString(),
+          });
+        }
         
         const appUrl = typeof window !== 'undefined' ? window.location.origin : '';
         const recoveryLink = `${appUrl}/k/${token}`;
+        setGeneratedLink(recoveryLink);
+
         try {
           await navigator.clipboard.writeText(`Ini kunci akses ruang teduh Amankarsa-mu: ${recoveryLink}`);
+          setLinkCopied(true);
         } catch {
-          // Graceful fallback if clipboard access is denied
+          // Graceful fallback
         }
+      } else if (method === 'skip') {
+        nextStep('seed');
+        setTimeout(() => {
+          onComplete();
+        }, 2000);
       }
     } catch {
       // Graceful local continuation
     } finally {
       setIsSubmitting(false);
-      nextStep('seed');
-      setTimeout(() => {
-        onComplete();
-      }, 2000);
     }
+  };
+
+  const handleFinishOnboarding = () => {
+    nextStep('seed');
+    setTimeout(() => {
+      onComplete();
+    }, 2000);
   };
 
   return (
@@ -224,47 +242,94 @@ export default function OnboardingFlow({ onComplete }: { onComplete: () => void 
               <h2 className="text-xl font-serif text-[color:var(--color-sacred)] mb-3">
                 Titip Kunci
               </h2>
-              <p className="text-[color:var(--color-text-secondary)] leading-relaxed mb-6">
-                Catatanmu tersimpan di Bilik Doa-mu. Agar kamu bisa kembali besok tanpa kehilangan kuncinya, ke mana kami bisa menitipkannya?
-              </p>
-              
-              {isSubmitting && (
-                <div className="text-center text-[color:var(--color-text-muted)] py-4">
-                   Memproses...
-                </div>
-              )}
-              
-              {!isSubmitting && (
-                <div className="flex flex-col gap-3">
-                  <input
-                    type="email"
-                    placeholder="Masukkan alamat email..."
-                    className="w-full bg-transparent border border-[color:var(--color-border)] rounded-lg px-4 py-3 focus:outline-none focus:border-[color:var(--color-sacred)] text-[color:var(--color-text-primary)] transition-colors mb-2"
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') handleTitipKunci('email', e.currentTarget.value);
-                    }}
-                    onBlur={(e) => {
-                      if (e.target.value) handleTitipKunci('email', e.target.value);
-                    }}
-                  />
-                  <div className="flex items-center gap-4 py-2">
-                    <div className="flex-1 h-px bg-[color:var(--color-border-soft)]"></div>
-                    <span className="text-sm text-[color:var(--color-text-muted)]">Atau</span>
-                    <div className="flex-1 h-px bg-[color:var(--color-border-soft)]"></div>
+
+              {generatedLink ? (
+                <div className="space-y-4 animate-in fade-in duration-normal">
+                  <p className="text-[color:var(--color-text-secondary)] leading-relaxed text-sm">
+                    Kunci akses ruang teduhmu telah siap. Simpan tautan ini atau kirimkan ke WhatsApp agar kamu bisa kembali kapan saja:
+                  </p>
+                  
+                  <div className="p-3 bg-[color:var(--color-surface-raised)] rounded-xl border border-[color:var(--color-border)] text-xs font-mono break-all text-[color:var(--color-text-primary)] select-all">
+                    {generatedLink}
                   </div>
-                  <button
-                    onClick={() => handleTitipKunci('whatsapp')}
-                    className="w-full py-3 px-4 bg-[color:var(--color-surface-raised)] text-[color:var(--color-text-primary)] border border-[color:var(--color-border)] rounded-lg font-medium transition-colors hover:bg-[color:var(--color-border)]"
-                  >
-                    Salin Kunci Akses (WhatsApp)
-                  </button>
-                  <button
-                    onClick={() => handleTitipKunci('skip')}
-                    className="w-full py-3 px-4 text-[color:var(--color-text-muted)] font-medium transition-colors hover:text-[color:var(--color-text-secondary)] mt-2"
-                  >
-                    Nanti saja
-                  </button>
+
+                  <div className="flex flex-col gap-2 pt-2">
+                    <button
+                      onClick={() => {
+                        const waText = encodeURIComponent(`Ini kunci akses ruang teduh Amankarsa-mu: ${generatedLink}`);
+                        window.open(`https://api.whatsapp.com/send?text=${waText}`, '_blank');
+                      }}
+                      className="w-full py-3 px-4 bg-[color:var(--color-growth)] text-[color:var(--color-text-inverse)] rounded-xl font-medium transition-opacity hover:opacity-90 flex items-center justify-center gap-2"
+                    >
+                      Buka WhatsApp & Kirim Kunci
+                    </button>
+
+                    <button
+                      onClick={async () => {
+                        try {
+                          await navigator.clipboard.writeText(`Ini kunci akses ruang teduh Amankarsa-mu: ${generatedLink}`);
+                          setLinkCopied(true);
+                          setTimeout(() => setLinkCopied(false), 2000);
+                        } catch {}
+                      }}
+                      className="w-full py-2.5 px-4 bg-transparent border border-[color:var(--color-border)] text-[color:var(--color-text-secondary)] rounded-xl text-sm font-medium hover:bg-[color:var(--color-surface-raised)] transition-colors"
+                    >
+                      {linkCopied ? 'Tautan Tersalin ke Clipboard' : 'Salin Tautan Kunci'}
+                    </button>
+
+                    <button
+                      onClick={handleFinishOnboarding}
+                      className="w-full py-3 px-4 bg-[color:var(--color-depth)] text-[color:var(--color-text-inverse)] rounded-xl font-medium transition-opacity hover:opacity-90 mt-2"
+                    >
+                      Lanjut ke Ruang Hari Ini &rarr;
+                    </button>
+                  </div>
                 </div>
+              ) : (
+                <>
+                  <p className="text-[color:var(--color-text-secondary)] leading-relaxed mb-6">
+                    Catatanmu tersimpan di Bilik Doa-mu. Agar kamu bisa kembali besok tanpa kehilangan kuncinya, ke mana kami bisa menitipkannya?
+                  </p>
+                  
+                  {isSubmitting && (
+                    <div className="text-center text-[color:var(--color-text-muted)] py-4">
+                       Memproses...
+                    </div>
+                  )}
+                  
+                  {!isSubmitting && (
+                    <div className="flex flex-col gap-3">
+                      <input
+                        type="email"
+                        placeholder="Masukkan alamat email..."
+                        className="w-full bg-transparent border border-[color:var(--color-border)] rounded-lg px-4 py-3 focus:outline-none focus:border-[color:var(--color-sacred)] text-[color:var(--color-text-primary)] transition-colors mb-2"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleTitipKunci('email', e.currentTarget.value);
+                        }}
+                        onBlur={(e) => {
+                          if (e.target.value) handleTitipKunci('email', e.target.value);
+                        }}
+                      />
+                      <div className="flex items-center gap-4 py-2">
+                        <div className="flex-1 h-px bg-[color:var(--color-border-soft)]"></div>
+                        <span className="text-sm text-[color:var(--color-text-muted)]">Atau</span>
+                        <div className="flex-1 h-px bg-[color:var(--color-border-soft)]"></div>
+                      </div>
+                      <button
+                        onClick={() => handleTitipKunci('whatsapp')}
+                        className="w-full py-3 px-4 bg-[color:var(--color-surface-raised)] text-[color:var(--color-text-primary)] border border-[color:var(--color-border)] rounded-lg font-medium transition-colors hover:bg-[color:var(--color-border)]"
+                      >
+                        Kirim Kunci Akses ke WhatsApp
+                      </button>
+                      <button
+                        onClick={() => handleTitipKunci('skip')}
+                        className="w-full py-3 px-4 text-[color:var(--color-text-muted)] font-medium transition-colors hover:text-[color:var(--color-text-secondary)] mt-2"
+                      >
+                        Nanti saja
+                      </button>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </motion.div>
