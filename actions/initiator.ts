@@ -40,6 +40,21 @@ export async function giveRestSpace(journeyId: string) {
   revalidatePath('/dashboard');
 }
 
+export async function getInitiatorJourneys() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  const { data, error } = await supabase
+    .from('journey')
+    .select('*')
+    .eq('initiator_id', user.id)
+    .order('created_at', { ascending: false });
+
+  if (error) return [];
+  return data;
+}
+
 export async function createJourney(formData: FormData) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -48,16 +63,46 @@ export async function createJourney(formData: FormData) {
   const theme = (formData.get('theme') as string) || 'Perjalanan Kasih';
   const durationDays = parseInt(formData.get('durationDays') as string, 10) || 14;
 
-  const { error } = await supabase.from('journey').insert({
-    initiator_id: user.id,
-    theme,
-    duration_days: durationDays,
-    status: 'active'
-  });
+  const { data: newJourney, error } = await supabase
+    .from('journey')
+    .insert({
+      initiator_id: user.id,
+      theme,
+      duration_days: durationDays,
+      status: 'active'
+    })
+    .select()
+    .single();
 
-  if (error) throw new Error('Failed to create journey.');
+  if (error || !newJourney) throw new Error('Failed to create journey.');
+
+  // Seed default gentle pulses for the journey
+  const defaultPulses: Array<{
+    day_index: number;
+    prompt_text: string;
+    action_type: 'contemplation' | 'practical_action' | 'reflection';
+  }> = [
+    { day_index: 1, prompt_text: 'Kirimkan satu pesan penguatan bagi rekan kerja atau saudara yang mungkin sedang bergumul hari ini.', action_type: 'practical_action' },
+    { day_index: 2, prompt_text: 'Hening sejenak selama 3 menit. Tarik napas perlahan dan sadari kehadiran kasih di sekelilingmu.', action_type: 'contemplation' },
+    { day_index: 3, prompt_text: 'Ucapkan terima kasih secara tulus kepada seseorang yang pelayanannya sering kali luput dari perhatian.', action_type: 'practical_action' },
+    { day_index: 4, prompt_text: 'Refleksikan satu hal sederhana hari ini yang membuat hatimu merasa hangat dan bersyukur.', action_type: 'reflection' },
+    { day_index: 5, prompt_text: 'Beri ruang bagi dirimu untuk beristirahat tanpa beban. Hari ini cukup.', action_type: 'contemplation' },
+    { day_index: 6, prompt_text: 'Bagikan sebungkus makanan atau uluran sapaan ramah kepada mereka yang sedang lelah.', action_type: 'practical_action' },
+    { day_index: 7, prompt_text: 'Serahkan segala kekhawatiran yang membebanimu ke dalam Bilik Doa. Relakan bebanmu dengan damai.', action_type: 'reflection' }
+  ];
+
+  const pulseInserts = defaultPulses.map((p) => ({
+    journey_id: newJourney.id,
+    day_index: p.day_index,
+    prompt_text: p.prompt_text,
+    action_type: p.action_type
+  }));
+
+  await supabase.from('the_pulse').insert(pulseInserts);
+
   revalidatePath('/dashboard');
   revalidatePath('/setup');
+  return newJourney;
 }
 
 export async function logImpactRecord(

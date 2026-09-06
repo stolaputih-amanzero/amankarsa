@@ -158,3 +158,31 @@ export async function titipKunci(authChannel: 'email' | 'whatsapp' | 'copy') {
   
   return { magicLink: `/k/${token}` };
 }
+
+// ==========================================
+// 5. JOURNEY MEMBERSHIP (PINTU MASUK)
+// ==========================================
+export async function joinJourney(journeyId: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Unauthorized');
+
+  const { data: existing } = await supabase
+    .from('participant_journey_state')
+    .select('id')
+    .eq('participant_id', user.id)
+    .eq('journey_id', journeyId)
+    .maybeSingle();
+
+  if (!existing) {
+    const { error } = await supabase.from('participant_journey_state').insert({
+      participant_id: user.id,
+      journey_id: journeyId,
+      state: 'active'
+    });
+    if (error) throw new Error('Belum dapat bergabung dalam perjalanan saat ini.');
+  }
+
+  revalidatePath('/home');
+  return { success: true };
+}
