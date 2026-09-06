@@ -22,28 +22,28 @@ export default function OnboardingFlow({ onComplete }: { onComplete: () => void 
       if (!user) {
         await signInAnonymously();
       }
-      nextStep('name');
     } catch {
-      // Graceful handling
+      // Graceful local continuation
     } finally {
       setIsSubmitting(false);
+      nextStep('name');
     }
   };
 
   const handleSaveName = async () => {
-    if (!name.trim() || !user) return;
+    if (!name.trim()) return;
     setIsSubmitting(true);
     try {
-      const { error } = await supabase
-        .from('participant')
-        .upsert({ id: user.id, display_name: name.trim() });
-        
-      if (error) throw error;
-      nextStep('context');
+      if (user) {
+        await supabase
+          .from('participant')
+          .upsert({ id: user.id, display_name: name.trim() });
+      }
     } catch {
-      // Graceful error fallback
+      // Graceful local continuation
     } finally {
       setIsSubmitting(false);
+      nextStep('context');
     }
   };
 
@@ -65,33 +65,29 @@ export default function OnboardingFlow({ onComplete }: { onComplete: () => void 
         const expiresAt = new Date();
         expiresAt.setDate(expiresAt.getDate() + 45); // Expires in 45 days
         
-        const { error } = await supabase.from('recovery_key').insert({
-           participant_id: user.id,
-           token_hash: hashed,
-           channel: 'whatsapp',
-           expires_at: expiresAt.toISOString(),
+        await supabase.from('recovery_key').insert({
+          participant_id: user.id,
+          token_hash: hashed,
+          channel: 'whatsapp',
+          expires_at: expiresAt.toISOString(),
         });
         
-        if (!error) {
-           const appUrl = typeof window !== 'undefined' ? window.location.origin : '';
-           const recoveryLink = `${appUrl}/k/${token}`;
-           try {
-             await navigator.clipboard.writeText(`Ini kunci akses ruang teduh Amankarsa-mu: ${recoveryLink}`);
-             alert("Kunci berhasil disalin ke clipboard!");
-           } catch {
-             // Graceful fallback if clipboard access is denied
-           }
+        const appUrl = typeof window !== 'undefined' ? window.location.origin : '';
+        const recoveryLink = `${appUrl}/k/${token}`;
+        try {
+          await navigator.clipboard.writeText(`Ini kunci akses ruang teduh Amankarsa-mu: ${recoveryLink}`);
+        } catch {
+          // Graceful fallback if clipboard access is denied
         }
       }
-
+    } catch {
+      // Graceful local continuation
+    } finally {
+      setIsSubmitting(false);
       nextStep('seed');
       setTimeout(() => {
         onComplete();
       }, 2000);
-    } catch {
-      // Graceful handling
-    } finally {
-      setIsSubmitting(false);
     }
   };
 

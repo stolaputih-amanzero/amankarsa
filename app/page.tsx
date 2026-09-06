@@ -20,16 +20,22 @@ function LandingContent() {
 
   useEffect(() => {
     if (!loading && user) {
-      const pendingJourney = sessionStorage.getItem('pending_join_journey');
-      if (pendingJourney) {
-        sessionStorage.removeItem('pending_join_journey');
-        joinJourney(pendingJourney).catch(() => {});
+      const hasCompleted = typeof window !== 'undefined' && localStorage.getItem('amankarsa_onboarding_completed');
+      if (hasCompleted) {
+        const pendingJourney = typeof window !== 'undefined' ? sessionStorage.getItem('pending_join_journey') : null;
+        if (pendingJourney) {
+          sessionStorage.removeItem('pending_join_journey');
+          joinJourney(pendingJourney).catch(() => {});
+        }
+        router.replace('/home');
       }
-      router.replace('/home');
     }
   }, [user, loading, router]);
 
   const handleOnboardingComplete = async () => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('amankarsa_onboarding_completed', 'true');
+    }
     const pendingJourney = typeof window !== 'undefined' ? sessionStorage.getItem('pending_join_journey') : null;
     if (pendingJourney) {
       sessionStorage.removeItem('pending_join_journey');
@@ -52,7 +58,8 @@ function LandingContent() {
     );
   }
 
-  if (user) {
+  const hasCompleted = typeof window !== 'undefined' && localStorage.getItem('amankarsa_onboarding_completed');
+  if (user && hasCompleted) {
     return null;
   }
 

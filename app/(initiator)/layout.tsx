@@ -7,7 +7,9 @@ export default async function InitiatorLayout({ children }: { children: React.Re
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  if (!user) redirect('/');
+  if (!user && process.env.NODE_ENV === 'production') {
+    redirect('/');
+  }
 
   return (
     <div className="flex flex-col min-h-screen bg-[color:var(--color-base)] text-[color:var(--color-text-primary)]">
@@ -28,6 +30,9 @@ export default async function InitiatorLayout({ children }: { children: React.Re
                 Buah Kasih
               </Link>
             )}
+            <Link href="/home" className="hover:text-[color:var(--color-growth)] transition-colors">
+              Ruang Peserta &rarr;
+            </Link>
           </div>
         </nav>
       </header>

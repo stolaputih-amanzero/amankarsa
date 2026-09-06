@@ -36,6 +36,14 @@ export default function ParticipantLayout({
       <main className="flex-1 flex flex-col w-full h-full">
         {children}
       </main>
+      {!isSacredSpace && (
+        <footer className="py-6 mt-auto text-center border-t border-[color:var(--color-border-soft)] text-xs text-[color:var(--color-text-muted)] flex items-center justify-between">
+          <span>Amankarsa &bull; Ruang Teduh</span>
+          <Link href="/dashboard" className="hover:text-[color:var(--color-text-primary)] transition-colors">
+            Jendela Gembala &rarr;
+          </Link>
+        </footer>
+      )}
     </div>
   );
 }
