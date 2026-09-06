@@ -1,6 +1,8 @@
 import { createClient } from '@/lib/supabase/server';
 import { logImpactRecord, getImpactRecords } from '@/actions/initiator';
 
+export const dynamic = 'force-dynamic';
+
 export default async function ImpactPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();

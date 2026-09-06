@@ -1,8 +1,15 @@
 import { getInitiatorJourneys } from '@/actions/initiator';
 import JourneyQRManager from './journey-qr-manager';
 
+export const dynamic = 'force-dynamic';
+
 export default async function SetupPage() {
-  const journeys = await getInitiatorJourneys();
+  let journeys: Awaited<ReturnType<typeof getInitiatorJourneys>> = [];
+  try {
+    journeys = await getInitiatorJourneys();
+  } catch (err) {
+    console.error('SetupPage getInitiatorJourneys error:', err);
+  }
 
   return (
     <div className="space-y-8 animate-in fade-in duration-slow max-w-2xl mx-auto">
@@ -15,7 +22,7 @@ export default async function SetupPage() {
         </p>
       </section>
 
-      <JourneyQRManager initialJourneys={journeys} />
+      <JourneyQRManager initialJourneys={journeys || []} />
     </div>
   );
 }

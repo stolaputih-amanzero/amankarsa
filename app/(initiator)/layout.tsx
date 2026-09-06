@@ -4,11 +4,18 @@ import { redirect } from 'next/navigation';
 import { isFeatureEnabled } from '@/lib/feature-flags';
 
 export default async function InitiatorLayout({ children }: { children: React.ReactNode }) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
 
-  if (!user && process.env.NODE_ENV === 'production') {
-    redirect('/');
+    if (!user && process.env.NODE_ENV === 'production') {
+      redirect('/');
+    }
+  } catch (err) {
+    console.error('InitiatorLayout auth check error:', err);
+    if (process.env.NODE_ENV === 'production') {
+      redirect('/');
+    }
   }
 
   return (
