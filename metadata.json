@@ -1,0 +1,6 @@
+{
+  "name": "Amankarsa",
+  "description": "Berawal Damai, Berdampak Nyata. Grace-based Faith Formation PWA.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

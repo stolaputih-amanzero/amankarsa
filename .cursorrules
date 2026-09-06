@@ -1,0 +1,427 @@
+# AMANKARSA — AGENTIC AI SYSTEM RULES
+
+You are building Amankarsa, a Grace-based Christian Faith Formation PWA.
+
+Your work must obey the Amankarsa Constitution.
+
+If a request violates these rules, refuse to implement it and explain the constitutional violation.
+
+---
+
+# 1. ABSOLUTE PROHIBITIONS
+
+Never implement:
+
+- spiritual score
+- faith level
+- holiness score
+- points
+- streak
+- streak broken
+- leaderboard
+- ranking
+- public feed
+- failed state
+- missed day
+- dropped_out
+- inactive user list
+- inactivity shame list
+- graduation ranking
+- beneficiary conversion score
+- AI pastoral diagnosis
+- AI analysis of Bilik Doa text
+
+Forbidden names in schema/code/UI:
+
+- score
+- points
+- streak
+- level
+- failed
+- missed
+- dropped_out
+- inactive_users
+- shame
+- ranking
+- leaderboard
+
+Exception:
+- The word `level` may appear only in technical tooling contexts if unavoidable, never as a user-facing spiritual concept.
+
+---
+
+# 2. TECH STACK RULES
+
+Use:
+
+- Next.js 16+ App Router
+- React 19+
+- TypeScript strict
+- Tailwind CSS 4+ CSS-first config
+- Supabase Cloud for MVP
+- PostgreSQL 16+
+- Supabase Auth with Anonymous Auth + Magic Link
+- Supabase RLS
+- TanStack Query 5+
+- Serwist for PWA
+- Motion / Framer Motion latest compatible package
+
+Do not use:
+
+- Next.js Pages Router for new app routes
+- Tailwind 3-style config as primary theme source
+- hardcoded design values in components
+- service role key in client code
+- service role key in normal runtime API routes
+
+---
+
+# 3. TAILWIND CSS 4 RULES
+
+Do not create a large `tailwind.config.ts`.
+
+All design tokens must live in:
+
+```text
+app/globals.css
+```
+
+Use Tailwind CSS 4 `@theme`.
+
+Allowed hardcoded hex values:
+- only inside token definitions in `globals.css`
+
+Forbidden:
+- hex values in React components
+- arbitrary colors like `bg-[#FAF8F5]`
+- one-off spacing values like `mt-[37px]`
+- one-off animation curves
+
+Use tokens and semantic classes.
+
+---
+
+# 4. THEME RULES
+
+The app must support:
+
+- light
+- dark
+- system
+
+Theme must be applied with `data-theme`.
+
+Bilik Doa must use sacred dimming through `data-space="sacred"` or equivalent scoped token layer.
+
+Do not implement theme by duplicating component styles.
+
+---
+
+# 5. UI / UX RULES
+
+Every screen must feel like an open door, not a gate.
+
+Use:
+- gentle spacing
+- rounded corners
+- calm motion
+- one primary action per screen
+- thoughtful but simple language
+
+Never use:
+- red warning for absence
+- confetti
+- bounce animation
+- gamified celebration
+- aggressive notification
+- progress pressure
+- completion anxiety
+
+Motion:
+- use ease-out / gentle curve
+- no bounce
+- no springy reward animation
+- no confetti
+
+---
+
+# 6. MICROCOPY RULES
+
+Forbidden Indonesian words:
+
+- wajib
+- harus
+- selesaikan
+- gagal
+- terlambat
+- tertinggal
+- bolos
+- tidak aktif
+- streak
+
+Preferred words:
+
+- boleh
+- jika kamu mau
+- ketika kamu siap
+- ruang ini tetap terbuka
+- sedang beristirahat
+- relakan
+- satu langkah kecil
+- hari ini cukup
+
+Bad:
+> Kamu belum menyelesaikan tugas hari ini.
+
+Good:
+> Ruang hari ini tetap terbuka. Kamu boleh melangkah ketika siap.
+
+---
+
+# 7. DATABASE RULES
+
+Every user-facing table must enable RLS.
+
+Immediately after creating a table, create its RLS policies.
+
+All state fields must use CHECK constraints.
+
+Allowed states:
+
+```sql
+pulse_interaction.state IN ('paused','acted','rested')
+participant_journey_state.state IN ('invited','active','paused','resting','completed','continuing','archived')
+pohon_karsa_state.current_season_state IN ('sprouting','growing','resting','bearing_fruit')
+```
+
+Forbidden states:
+
+```text
+failed
+missed
+late
+dropped_out
+streak_broken
+inactive_penalty
+```
+
+---
+
+# 8. BILIK DOA SECURITY RULES
+
+Bilik Doa is the most sacred private space.
+
+Never create:
+- admin reader for Bilik Doa
+- initiator reader for Bilik Doa
+- AI analyzer for Bilik Doa
+- share button for Bilik Doa in MVP
+- plaintext Bilik Doa logs
+- plaintext Bilik Doa cache
+
+`bilik_doa.encrypted_payload` must be readable only by its owner through RLS.
+
+No dashboard may expose decrypted Bilik Doa content.
+
+---
+
+# 9. ENCRYPTION RULES
+
+Use Web Crypto API:
+
+```ts
+crypto.subtle
+```
+
+Do not use Node native `crypto` if the code may run in Edge runtime.
+
+Use AES-256-GCM.
+
+Rules:
+- random 96-bit IV per encryption
+- never reuse IV
+- 32-byte master key from environment variable
+- store envelope with version, algorithm, iv, data
+- never log plaintext
+- never log decrypted payload
+- never send Bilik Doa text to AI
+
+MVP encryption is application-level encryption, not full E2EE.
+
+Do not implement full E2EE unless explicitly requested for post-MVP.
+
+---
+
+# 10. PWA CACHE RULES
+
+Do not cache decrypted Bilik Doa content.
+
+Forbidden:
+- decrypted Bilik Doa in IndexedDB
+- decrypted Bilik Doa in Service Worker cache
+- decrypted Bilik Doa in localStorage
+- decrypted Bilik Doa in sessionStorage
+
+Allowed:
+- cache app shell
+- cache static assets
+- network-first API
+- calm offline fallback
+
+Offline copy:
+
+> Koneksi sedang beristirahat. Ruang ini tetap aman. Kamu boleh kembali saat terhubung lagi.
+
+---
+
+# 11. SUPABASE AUTH RULES
+
+Users enter through Anonymous Auth.
+
+When user chooses Titip Kunci:
+
+- preserve the existing anonymous user identity
+- upgrade or link identity according to current Supabase-supported flow
+- do not create a new unrelated auth user
+- preserve `participant.id`
+- preserve Bilik Doa, Pohon Karsa, Pulse Interaction relationships
+
+Required test:
+
+```text
+auth.users.id before Titip Kunci === auth.users.id after Magic Link recovery
+```
+
+If implementation would create a new user, stop and redesign.
+
+---
+
+# 12. SERVICE ROLE RULES
+
+Never expose service role key to:
+- browser
+- client component
+- public API route
+- normal runtime endpoint
+
+Service role may be used only for:
+- migrations
+- controlled backend maintenance
+- audited admin scripts
+- secure aggregate jobs if absolutely required
+
+Application runtime must rely on:
+- user JWT
+- RLS
+- scoped SECURITY DEFINER functions with authorization checks
+
+---
+
+# 13. SECURITY DEFINER RULES
+
+Every SECURITY DEFINER function must:
+
+1. Set search path.
+2. Check `auth.uid()` authorization.
+3. Return aggregate data only.
+4. Never return `participant_id` unless owner is requester.
+5. Never return Bilik Doa content.
+6. Revoke from PUBLIC.
+7. Grant only required role.
+
+Pattern:
+
+```sql
+SECURITY DEFINER
+SET search_path = public
+```
+
+Never create broad SECURITY DEFINER functions without authorization checks.
+
+---
+
+# 14. INITIATOR DASHBOARD RULES
+
+Initiator may see:
+
+- aggregate Tanda Rasa
+- aggregate participation
+- Impact Radiance
+- Beneficiary Group
+- Impact Record
+
+Initiator must never see:
+
+- Bilik Doa content
+- individual Tanda Rasa
+- inactive user list
+- individual absence status
+- spiritual score
+- ranking
+
+If respondent count < 5, show insufficient data state.
+
+---
+
+# 15. AI BOUNDARY RULES
+
+AI may assist:
+- content drafting
+- accessibility
+- administrative summarization
+- aggregate authorized insights
+
+AI may not:
+- read Bilik Doa
+- judge spiritual maturity
+- infer holiness
+- diagnose pastoral condition
+- predict faithfulness
+- score participants
+- train on private reflections
+
+Private reflection must never become an AI training commodity.
+
+---
+
+# 16. IMPLEMENTATION WORKFLOW
+
+Before coding any feature:
+
+1. State which Constitution rule applies.
+2. State which entities are touched.
+3. State whether RLS is required.
+4. State whether private data is involved.
+5. State whether any anti-entity risk exists.
+
+Then implement.
+
+After coding:
+
+1. Check no hardcoded UI values.
+2. Check no forbidden words in UI.
+3. Check RLS exists.
+4. Check no service role misuse.
+5. Check no private data leakage.
+6. Check tests are added.
+
+---
+
+# 17. REFUSAL PROTOCOL
+
+If asked to implement something unconstitutional, respond:
+
+> I cannot implement this because it violates the Amankarsa Constitution: [rule].  
+> A safer alternative is: [alternative].
+
+Do not write violating code.
+
+---
+
+# 18. FINAL PRINCIPLE
+
+Amankarsa is not a habit tracker.
+
+It is a safe digital space for grace-shaped formation.
+
+Build accordingly.
